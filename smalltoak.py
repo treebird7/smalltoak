@@ -303,7 +303,17 @@ class _Handler(BaseHTTPRequestHandler):
 def serve(port: int = DEFAULT_PORT):
     global SERVER_URL
     SERVER_URL = ""  # server itself always uses JSONL directly
-    server = HTTPServer(("0.0.0.0", port), _Handler)
+    # SECURITY: default-bind loopback. smalltoak's token auth is OPTIONAL
+    # (off by default) — a LAN-reachable instance with no token is open
+    # read+write to its JSONL message store. Set SMALLTOAK_HOST=0.0.0.0
+    # only after also setting SMALLTOAK_TOKEN.
+    host = os.environ.get("SMALLTOAK_HOST", "127.0.0.1")
+    if host != "127.0.0.1" and host != "::1" and not TOKEN:
+        raise SystemExit(
+            f"refusing to bind {host} without SMALLTOAK_TOKEN — "
+            "set SMALLTOAK_TOKEN to enable network access"
+        )
+    server = HTTPServer((host, port), _Handler)
     # Security fix: Optional TLS
     cert_file = os.environ.get("SMALLTOAK_CERT")
     key_file = os.environ.get("SMALLTOAK_KEY")
@@ -316,7 +326,7 @@ def serve(port: int = DEFAULT_PORT):
         if TOKEN
         else "  token auth: OFF (set SMALLTOAK_TOKEN to enable)"
     )
-    print(f"smalltoak server listening on 0.0.0.0:{port}")
+    print(f"smalltoak server listening on {host}:{port}")
     print(auth_note)
     print(f"  store: {os.path.abspath(STORE)}")
     print(f"  cert: {cert_file}" if cert_file else "  cert: not set")
