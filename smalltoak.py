@@ -250,8 +250,16 @@ def _format_priority(m: dict) -> str:
 
 class _Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
+        # Quiet routine inbox polling: GET /messages 200s are the overwhelming
+        # majority of traffic (agents poll in a loop) and bloated the log to
+        # ~300MB. Log only writes, errors, and non-/messages requests.
+        line = fmt % args
+        if self.command == "GET" and line.startswith('"GET /messages') and (
+            " 200 " in line or line.endswith(" 200 -")
+        ):
+            return
         ts = datetime.now().strftime("%H:%M:%S")
-        print(f"[{ts}] {fmt % args}", flush=True)
+        print(f"[{ts}] {line}", flush=True)
 
     def _check_auth(self) -> bool:
         if not TOKEN:
