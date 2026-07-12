@@ -1,0 +1,3 @@
+
+# spidersan registry is local state; cross-machine sync is Supabase spider_registries
+.spidersan/
